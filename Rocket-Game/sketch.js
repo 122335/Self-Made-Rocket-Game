@@ -7,8 +7,11 @@ var fuel,
   starImg,
   ufo,
   ufoImg,
-  bulletImg;
+  bullet,
+  bulletImg,
+  blastImg;
 var fuelGroup, obstacleGroup, starGroup, ufoGroup, bulletGroup;
+var gameState = "play";
 var score = 0;
 var life = 3;
 
@@ -21,13 +24,15 @@ function preload() {
   starImg = loadImage("./images/Star.png");
   ufoImg = loadImage("./images/UFO.png");
   bulletImg = loadImage("./images/bullet.png");
+  blastImg = loadImage("./images/blast.png");
 }
 
 function setup() {
   createCanvas(1600, 900);
   // put setup code here
   rocket = createSprite(800, 800, 50, 50);
-  rocket.addImage(rocketImg);
+  rocket.addImage("rocket", rocketImg);
+  rocket.addImage("explosion", blastImg);
   rocket.scale = 0.3;
 
   fuelGroup = new Group();
@@ -38,55 +43,71 @@ function setup() {
 }
 
 function draw() {
-  // put drawing code here
-  background(bg);
-  textSize(25);
-  text("Score: " + score, 10, 30);
-  text("Life:    " + life, 10, 60);
+  if (gameState == "play") {
+    // put drawing code here
+    background(bg);
+    rocket.changeImage("rocket");
+    textSize(25);
+    text("Score: " + score, 10, 30);
+    text("Life:    " + life, 10, 60);
 
-  addSprites(fuelGroup, 2, fuelImg, 0.1);
-  addSprites(obstacleGroup, 2, obstacleImg, 0.5);
-  addSprites(starGroup, 4, starImg, 0.1);
-  addSprites(ufoGroup, 3, ufoImg, 0.1);
+    addSprites(fuelGroup, 2, fuelImg, 0.1);
+    addSprites(obstacleGroup, 2, obstacleImg, 0.5);
+    addSprites(starGroup, 4, starImg, 0.1);
+    addSprites(ufoGroup, 3, ufoImg, 0.1);
 
-  // player movement
-  if (keyDown("left_arrow")) {
-    rocket.x -= 6;
+    // player movement
+    if (keyDown("left_arrow")) {
+      rocket.x -= 6;
+    }
+
+    if (keyDown("right_arrow")) {
+      rocket.x += 6;
+    }
+
+    if (keyDown("space")) {
+      shootBullet();
+    }
+
+    // player events
+    if (starGroup.isTouching(rocket)) {
+      handleStars();
+    }
+
+    if (obstacleGroup.isTouching(rocket)) {
+      handleObstacles();
+    }
+
+    if (ufoGroup.isTouching(rocket)) {
+      handleUFOs();
+    }
+
+    if (ufoGroup.isTouching(bulletGroup)) {
+      handleBullet();
+    }
+
+    // game events
+    if (life == 0) {
+      textSize(50);
+      text("Game Over", width / 2 - 100, height / 2);
+      fuelGroup.removeEach();
+      obstacleGroup.removeEach();
+      starGroup.removeEach();
+      ufoGroup.removeEach();
+      rocket.remove();
+    }
+
+    drawSprites();
   }
 
-  if (keyDown("right_arrow")) {
-    rocket.x += 6;
-  }
+  if (gameState == "pause") {
+    ufoGroup.destroyEach();
+    obstacleGroup.destroyEach();
+    starGroup.destroyEach();
+    fuelGroup.destroyEach();
+    bulletGroup.destroyEach();
 
-  if (keyDown("space")) {
-    shootBullet();
   }
-
-  // player events
-  if (starGroup.isTouching(rocket)) {
-    handleStars();
-  }
-
-  if (obstacleGroup.isTouching(rocket)) {
-    handleObstacles();
-  }
-
-  if (ufoGroup.isTouching(rocket)) {
-    handleUFOs();
-  }
-
-  // game events
-  if (life == 0) {
-    textSize(50);
-    text("Game Over", width / 2 - 100, height / 2);
-    fuelGroup.removeEach();
-    obstacleGroup.removeEach();
-    starGroup.removeEach();
-    ufoGroup.removeEach();
-    rocket.remove();
-  }
-
-  drawSprites();
 }
 
 function addSprites(
@@ -96,7 +117,7 @@ function addSprites(
   scale,
   positions = []
 ) {
-  if (frameCount % 180 === 0) {
+  if (frameCount % 100 === 0) {
     for (var i = 0; i < numberOfSprites; i++) {
       var x, y;
 
@@ -135,15 +156,32 @@ function handleObstacles() {
 function handleUFOs() {
   rocket.overlap(ufoGroup, function (collector, collected) {
     // player.fuel = 185;
+    rocket.changeImage("explosion");
     collected.remove();
     score -= 3;
+    gameState = "pause";
+  });
+}
+
+function handleBullet() {
+  bulletGroup.overlap(ufoGroup, function (collector, collected) {
+    // player.fuel = 185;
+    collected.remove();
+    bullet.remove();
+    score += 7;
   });
 }
 
 function shootBullet() {
-  var bullet = createSprite(rocket.x, rocket.y);
+  bullet = createSprite(rocket.x, rocket.y);
   bullet.addImage(bulletImg);
+  bullet.addImage("explosion", blastImg);
   bullet.velocityY = -6;
   bullet.scale = 0.1;
   bulletGroup.add(bullet);
+}
+
+function mouseClicked() {
+  gameState = "play";
+  console.log("mousePressed");
 }
